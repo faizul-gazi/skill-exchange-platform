@@ -1,16 +1,110 @@
-# React + Vite
+# Skill Exchange Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack skill-sharing platform where users can register, build profiles, discover matching people based on skills, send requests, and chat.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- User authentication (register/login) with JWT
+- Private routes and guest-only routes
+- Profile management (name, avatar, offered skills, wanted skills, availability)
+- Match discovery with dynamic filters (skill, level, category)
+- Detailed user profile page via dynamic route (`/users/:userId`)
+- Request flow between matched users
+- Chat and dashboard pages
+- Admin dashboard route
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Frontend
+- React
+- React Router
+- Axios
+- Vite
+- Tailwind CSS
 
-## Expanding the ESLint configuration
+### Backend
+- Node.js
+- Express
+- MongoDB + Mongoose
+- JWT + bcrypt
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Project Structure
+
+```text
+skill-exchange/
+  src/                # Frontend app
+  server/             # Backend API
+  package.json        # Frontend scripts
+  server/package.json # Backend scripts
+```
+
+## Environment Setup
+
+### 1) Backend env
+
+Copy `server/.env.example` to `server/.env`, then set values:
+
+```env
+NODE_ENV=development
+PORT=5000
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_long_random_secret
+JWT_EXPIRES_IN=7d
+```
+
+## Installation
+
+From project root:
+
+```bash
+npm install
+npm install --prefix server
+```
+
+## Run Locally
+
+Open two terminals from project root.
+
+### Terminal 1: Backend
+
+```bash
+npm run server:dev
+```
+
+### Terminal 2: Frontend
+
+```bash
+npm run dev
+```
+
+For Windows PowerShell execution-policy issues, use:
+
+```bash
+npm.cmd run server:dev
+npm.cmd run dev
+```
+
+## Available Scripts
+
+### Frontend (root)
+
+- `npm run dev` - start Vite dev server
+- `npm run build` - production build
+- `npm run preview` - preview build
+- `npm run lint` - run ESLint
+
+### Backend (`server`)
+
+- `npm run dev --prefix server` - run API in watch mode
+- `npm run start --prefix server` - run API in normal mode
+
+## API Base
+
+- Frontend calls API via `/api` (proxied in Vite)
+- Default local backend: `http://localhost:5000`
+
+## Notes
+
+- Keep secrets in `server/.env` only.
+- Do not commit credentials or tokens.
+- `server/.env` is gitignored.
