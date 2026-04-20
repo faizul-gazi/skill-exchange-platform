@@ -5,6 +5,7 @@ import Card from '../components/ui/Card.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import AlertMessage from '../components/ui/AlertMessage.jsx'
+import { useToast } from '../context/useToast.js'
 import { api } from '../lib/api.js'
 import { getApiErrorMessage } from '../lib/apiError.js'
 
@@ -19,9 +20,11 @@ function initials(name = '') {
 
 export default function UserProfilePage() {
   const { userId } = useParams()
+  const toast = useToast()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [sendingRequest, setSendingRequest] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -59,7 +62,35 @@ export default function UserProfilePage() {
         title={user?.name ? `${user.name}'s profile` : 'Profile details'}
         description="Explore what this member offers, wants to learn, and when they are available."
       >
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button to={`/chat?peer=${userId}`} variant="outline" size="md">
+            Send message
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            loading={sendingRequest}
+            disabled={!user || loading}
+            onClick={async () => {
+              if (!user) return
+              setSendingRequest(true)
+              try {
+                const topic =
+                  Array.isArray(user.skillsOffered) && user.skillsOffered[0]
+                    ? `${user.skillsOffered[0]} · skill exchange`
+                    : 'Skill exchange'
+                await api.post('/requests', { receiverId: userId, meetingLink: topic })
+                toast.success('Request sent. They’ll see it in their incoming requests.')
+              } catch (err) {
+                toast.error(getApiErrorMessage(err, 'Could not send request.'))
+              } finally {
+                setSendingRequest(false)
+              }
+            }}
+          >
+            Send Request
+          </Button>
           <Button to="/matches" variant="secondary" size="md">
             Back to matches
           </Button>
