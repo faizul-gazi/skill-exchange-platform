@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import Card from '../components/ui/Card.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import AlertMessage from '../components/ui/AlertMessage.jsx'
@@ -110,6 +111,7 @@ export default function DashboardPage() {
         hint: 'From your discovery feed',
         gradient: 'from-indigo-500 to-blue-600',
         icon: MatchesIcon,
+        to: '/matches',
       },
       {
         key: 'requests',
@@ -118,6 +120,7 @@ export default function DashboardPage() {
         hint: `${pendingIncoming} pending`,
         gradient: 'from-violet-500 to-purple-600',
         icon: RequestsIcon,
+        to: '/requests',
       },
       {
         key: 'reviews',
@@ -126,6 +129,7 @@ export default function DashboardPage() {
         hint: reviewsAvg != null ? `${reviewsAvg} avg rating` : 'Reviews received',
         gradient: 'from-fuchsia-500 to-pink-500',
         icon: ReviewsIcon,
+        to: '/reviews',
       },
     ],
     [pendingIncoming, reviewsAvg, reviewsCount, totalMatches, totalRequests],
@@ -168,33 +172,35 @@ export default function DashboardPage() {
                 const StatIcon = stat.icon
                 return (
                   <li key={stat.key}>
-                    <Card
-                      variant="solid"
-                      enter
-                      style={{ animationDelay: `${idx * 90}ms` }}
-                      className="h-full overflow-hidden"
-                    >
-                      <Card.Body className="relative flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
-                          <p className="mt-2 text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
-                            {stat.value}
-                          </p>
-                          <p className="mt-1 text-xs font-medium text-indigo-600 dark:text-indigo-300">
-                            {stat.hint}
-                          </p>
-                        </div>
-                        <div
-                          className={cn(
-                            'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-soft',
-                            stat.gradient,
-                          )}
-                          aria-hidden
-                        >
-                          <StatIcon className="h-6 w-6" />
-                        </div>
-                      </Card.Body>
-                    </Card>
+                    <Link to={stat.to} className="block h-full">
+                      <Card
+                        variant="solid"
+                        enter
+                        style={{ animationDelay: `${idx * 90}ms` }}
+                        className="h-full overflow-hidden transition-transform duration-200 hover:-translate-y-0.5"
+                      >
+                        <Card.Body className="relative flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
+                            <p className="mt-2 text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
+                              {stat.value}
+                            </p>
+                            <p className="mt-1 text-xs font-medium text-indigo-600 dark:text-indigo-300">
+                              {stat.hint}
+                            </p>
+                          </div>
+                          <div
+                            className={cn(
+                              'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-soft',
+                              stat.gradient,
+                            )}
+                            aria-hidden
+                          >
+                            <StatIcon className="h-6 w-6" />
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Link>
                   </li>
                 )
               })}

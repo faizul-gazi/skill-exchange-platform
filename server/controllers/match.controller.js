@@ -16,6 +16,8 @@ export async function getMatches(req, res, next) {
       matchScore: computeMatchScorePercent(me, u),
       id: u._id.toString(),
       name: u.name,
+      headline: u.headline ?? '',
+      about: u.about ?? '',
       email: u.email,
       role: u.role,
       skillsOffered: u.skillsOffered ?? [],

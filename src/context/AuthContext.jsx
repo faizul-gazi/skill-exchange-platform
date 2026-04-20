@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
-import { clearStoredAuth, loadStoredAuth, saveAuth } from '../lib/authStorage.js'
+import { clearStoredAuth, saveAuth } from '../lib/authStorage.js'
 import { AuthContext } from './authContext.js'
 
 export function AuthProvider({ children }) {
-  const [{ user, token }, setState] = useState(() => loadStoredAuth())
+  const [{ user, token }, setState] = useState({ user: null, token: null })
 
   useEffect(() => {
+    clearStoredAuth()
     const onExpired = () => setState({ user: null, token: null })
     window.addEventListener('skillx-auth-expired', onExpired)
     return () => window.removeEventListener('skillx-auth-expired', onExpired)
@@ -17,6 +18,17 @@ export function AuthProvider({ children }) {
     const next = { user: data.user, token: data.token }
     saveAuth(next)
     setState(next)
+    try {
+      const meRes = await api.get('/users/me')
+      const freshUser = meRes.data?.user
+      if (freshUser) {
+        const synced = { user: freshUser, token: data.token }
+        saveAuth(synced)
+        setState(synced)
+      }
+    } catch {
+      // Keep login successful even if profile refresh fails.
+    }
     return data
   }, [])
 

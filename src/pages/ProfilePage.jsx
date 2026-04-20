@@ -44,13 +44,15 @@ export default function ProfilePage() {
   const { user, updateUser } = useAuth()
   const [displayName, setDisplayName] = useState(user?.name ?? '')
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '')
+  const [headline, setHeadline] = useState(user?.headline ?? '')
+  const [about, setAbout] = useState(user?.about ?? '')
   const [avatarPreview, setAvatarPreview] = useState('')
   const [offered, setOffered] = useState([])
   const [wanted, setWanted] = useState([])
   const [availability, setAvailability] = useState([])
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [savingProfile, setSavingProfile] = useState(false)
-  const [isEditing, setIsEditing] = useState(true)
+  const [isEditing, setIsEditing] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -62,6 +64,8 @@ export default function ProfilePage() {
         if (cancelled) return
         setDisplayName(profile.name ?? '')
         setAvatarUrl(profile.avatarUrl ?? '')
+        setHeadline(profile.headline ?? '')
+        setAbout(profile.about ?? '')
         setAvatarPreview('')
         setOffered(toSkillItems(profile.skillsOffered, true))
         setWanted(toSkillItems(profile.skillsWanted))
@@ -113,6 +117,8 @@ export default function ProfilePage() {
       const payload = {
         name: normalizeName(displayName),
         avatarUrl,
+        headline: headline.trim().slice(0, 120),
+        about: about.trim().slice(0, 600),
         skillsOffered: offered.map((item) => item.name),
         skillsWanted: wanted.map((item) => item.name),
         availability: availability.map((item) => item.label),
@@ -122,16 +128,23 @@ export default function ProfilePage() {
         setSavingProfile(false)
         return
       }
-      const { data } = await api.put('/users/me', payload)
+      await api.put('/users/me', payload)
+      const { data } = await api.get('/users/me')
       const saved = data?.user ?? null
       if (saved) {
         setDisplayName(saved.name ?? '')
         setAvatarUrl(saved.avatarUrl ?? '')
+        setHeadline(saved.headline ?? '')
+        setAbout(saved.about ?? '')
         setAvatarPreview('')
         setOffered(toSkillItems(saved.skillsOffered, true))
         setWanted(toSkillItems(saved.skillsWanted))
         setAvailability(toAvailabilityItems(saved.availability))
         updateUser(saved)
+      } else {
+        toast.error('Profile saved response missing. Please try again.')
+        setSavingProfile(false)
+        return
       }
       setIsEditing(false)
       toast.success('Profile saved.')
@@ -247,19 +260,34 @@ export default function ProfilePage() {
                   {normalizeName(displayName || 'Unnamed user')}
                 </h2>
                 <p className="truncate text-sm text-slate-500 dark:text-slate-400">{user?.email}</p>
+                <p className="truncate text-sm text-indigo-600 dark:text-indigo-300">
+                  {headline?.trim() || 'Add a short headline to describe your specialization.'}
+                </p>
               </div>
             </div>
             <Button
               type="button"
               variant={isEditing ? 'secondary' : 'primary'}
-              onClick={() => setIsEditing((v) => !v)}
+              onClick={() => {
+                if (isEditing) {
+                  save()
+                } else {
+                  setIsEditing(true)
+                }
+              }}
               disabled={loadingProfile || savingProfile}
             >
-              {isEditing ? 'Done editing' : 'Edit profile'}
+              {isEditing ? 'Save & close' : 'Edit profile'}
             </Button>
           </div>
 
           <div className="space-y-3">
+            <div className="rounded-xl border border-slate-200/80 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-500">About</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                {about?.trim() || 'Add your background, teaching style, and what makes you unique.'}
+              </p>
+            </div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-500">Top skills</p>
             <div className="flex flex-wrap gap-2">
               {offered.slice(0, 6).map((skill) => (
@@ -306,6 +334,36 @@ export default function ProfilePage() {
                   placeholder="Your name"
                   className="w-full rounded-xl border border-slate-200/90 bg-white/80 px-4 py-2.5 text-sm shadow-soft backdrop-blur placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-100"
                 />
+              </div>
+              <div>
+                <label htmlFor="profile-headline" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Headline
+                </label>
+                <input
+                  id="profile-headline"
+                  type="text"
+                  maxLength={120}
+                  value={headline}
+                  onChange={(e) => setHeadline(e.target.value)}
+                  placeholder="e.g. Frontend Developer | React Mentor | UI Specialist"
+                  className="w-full rounded-xl border border-slate-200/90 bg-white/80 px-4 py-2.5 text-sm shadow-soft backdrop-blur placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-100"
+                />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">{headline.length}/120</p>
+              </div>
+              <div>
+                <label htmlFor="profile-about" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  About
+                </label>
+                <textarea
+                  id="profile-about"
+                  rows={4}
+                  maxLength={600}
+                  value={about}
+                  onChange={(e) => setAbout(e.target.value)}
+                  placeholder="Write a short intro about your background, experience, and how you help others learn."
+                  className="w-full rounded-xl border border-slate-200/90 bg-white/80 px-4 py-2.5 text-sm shadow-soft backdrop-blur placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-100"
+                />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">{about.length}/600</p>
               </div>
               <div>
                 <label htmlFor="profile-image" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">

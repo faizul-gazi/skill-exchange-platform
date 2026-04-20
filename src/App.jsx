@@ -18,6 +18,7 @@ import ChatPage from './pages/ChatPage.jsx'
 import RequestsPage from './pages/RequestsPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import UserProfilePage from './pages/UserProfilePage.jsx'
+import ReviewsPage from './pages/ReviewsPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
               <Route path="/requests" element={<RequestsPage />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/reviews" element={<ReviewsPage />} />
               <Route path="/users/:userId" element={<UserProfilePage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
             </Route>

@@ -67,13 +67,16 @@ export default function MatchesPage() {
       try {
         const { data } = await api.get('/matches')
         const rows = data.data ?? []
-        const mapped = rows.map((u) => ({
-          id: u.id,
-          name: u.name,
-          score: u.matchScore,
-          offered: u.skillsOffered ?? [],
-          wanted: u.skillsWanted ?? [],
-        }))
+        const mapped = rows
+          .map((u) => ({
+            id: u.id,
+            name: u.name,
+            headline: u.headline ?? '',
+            score: u.matchScore,
+            offered: u.skillsOffered ?? [],
+            wanted: u.skillsWanted ?? [],
+          }))
+          .filter((u) => u.offered.length > 0 && u.wanted.length > 0)
         if (!cancelled) setMatches(mapped)
       } catch (e) {
         if (!cancelled) {
@@ -274,7 +277,9 @@ export default function MatchesPage() {
                         >
                           {user.name}
                         </Link>
-                        <p className="text-xs text-slate-500 dark:text-slate-500">SkillX member</p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-500">
+                          {user.headline?.trim() || 'SkillX member'}
+                        </p>
                       </div>
                     </div>
                     <MatchScoreBadge score={user.score} />
@@ -312,9 +317,12 @@ export default function MatchesPage() {
                   </div>
                 </Card.Body>
                 <Card.Footer className="bg-slate-50/80 px-6 py-4 dark:bg-white/[0.03]">
-                  <div className="mb-2">
+                  <div className="mb-2 grid gap-2 sm:grid-cols-2">
                     <Button to={`/users/${user.id}`} variant="secondary" size="sm" className="w-full justify-center">
                       View profile
+                    </Button>
+                    <Button to={`/chat?peer=${user.id}`} variant="outline" size="sm" className="w-full justify-center">
+                      Send message
                     </Button>
                   </div>
                   <Button

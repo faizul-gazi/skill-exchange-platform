@@ -110,8 +110,22 @@ export default function UserProfilePage() {
               <div className="min-w-0">
                 <h2 className="truncate text-xl font-semibold text-slate-900 dark:text-white">{user.name}</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
+                {user.headline?.trim() ? (
+                  <p className="mt-1 text-sm text-indigo-600 dark:text-indigo-300">{user.headline}</p>
+                ) : null}
                 <p className="mt-1 text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">SkillX member</p>
               </div>
+            </Card.Body>
+          </Card>
+
+          <Card variant="elevated">
+            <Card.Header>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">About</h3>
+            </Card.Header>
+            <Card.Body>
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                {user.about?.trim() || 'This member has not added an about section yet.'}
+              </p>
             </Card.Body>
           </Card>
 

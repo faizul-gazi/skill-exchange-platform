@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import Button from '../components/ui/Button.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import PageHeader from '../components/ui/PageHeader.jsx'
@@ -19,6 +19,8 @@ function initials(name) {
 }
 
 export default function ChatPage() {
+  const [searchParams] = useSearchParams()
+  const peerParam = searchParams.get('peer') ?? ''
   const toast = useToast()
   const {
     chatPeers,
@@ -36,6 +38,13 @@ export default function ChatPage() {
   const bottomRef = useRef(null)
 
   const activeUser = useMemo(() => chatPeers.find((u) => u.id === activeId), [activeId, chatPeers])
+
+  useEffect(() => {
+    if (!peerParam) return
+    if (chatPeers.some((peer) => peer.id === peerParam)) {
+      setActiveId(peerParam)
+    }
+  }, [peerParam, chatPeers, setActiveId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

@@ -56,6 +56,8 @@ export async function updateMyProfile(req, res, next) {
     const payload = req.body ?? {}
     const nextName = normalizeOptionalString(payload.name)
     const nextAvatarUrl = normalizeOptionalString(payload.avatarUrl)
+    const nextHeadline = normalizeOptionalString(payload.headline)
+    const nextAbout = normalizeOptionalString(payload.about)
     const updates = {
       skillsOffered: normalizeStringArray(payload.skillsOffered),
       skillsWanted: normalizeStringArray(payload.skillsWanted),
@@ -66,6 +68,12 @@ export async function updateMyProfile(req, res, next) {
     }
     if (nextAvatarUrl !== null) {
       updates.avatarUrl = nextAvatarUrl
+    }
+    if (nextHeadline !== null) {
+      updates.headline = nextHeadline
+    }
+    if (nextAbout !== null) {
+      updates.about = nextAbout
     }
 
     const user = await User.findByIdAndUpdate(req.user.id, updates, {
