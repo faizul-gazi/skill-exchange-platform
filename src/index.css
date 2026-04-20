@@ -1,0 +1,218 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --shadow-soft: 0 4px 6px -1px rgb(15 23 42 / 0.06), 0 10px 15px -3px rgb(15 23 42 / 0.07);
+  --shadow-soft-lg: 0 12px 28px -8px rgb(15 23 42 / 0.1), 0 24px 48px -16px rgb(79 70 229 / 0.14);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    @apply m-0 min-h-screen antialiased text-slate-800 transition-colors duration-300;
+    background-color: #f8fafc;
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, rgb(199 210 254 / 0.5), transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, rgb(186 230 253 / 0.45), transparent 50%),
+      radial-gradient(800px 400px at 50% 100%, rgb(233 213 255 / 0.38), transparent 60%);
+  }
+
+  .dark body {
+    @apply text-slate-100;
+    background-color: #020617;
+    background-image:
+      radial-gradient(1000px 500px at 15% -5%, rgb(79 70 229 / 0.28), transparent 55%),
+      radial-gradient(800px 450px at 100% 5%, rgb(37 99 235 / 0.22), transparent 45%),
+      radial-gradient(700px 400px at 40% 110%, rgb(168 85 247 / 0.18), transparent 55%);
+  }
+}
+
+@layer utilities {
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes float-y {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes float-y-slow {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(-6px) scale(1.02);
+    }
+  }
+
+  @keyframes gradient-pan {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.05);
+    }
+  }
+
+  .motion-safe\:animate-fade-in-up {
+    animation: fade-in-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .motion-safe\:animate-fade-in {
+    animation: fade-in 0.65s ease-out both;
+  }
+
+  .motion-safe\:animate-float {
+    animation: float-y 5.5s ease-in-out infinite;
+  }
+
+  .motion-safe\:animate-float-slow {
+    animation: float-y-slow 7s ease-in-out infinite;
+  }
+
+  .motion-safe\:animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-pan 10s ease infinite;
+  }
+
+  .motion-safe\:animate-pulse-soft {
+    animation: pulse-soft 4.5s ease-in-out infinite;
+  }
+
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+  .animation-delay-150 {
+    animation-delay: 150ms;
+  }
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+  .animation-delay-600 {
+    animation-delay: 600ms;
+  }
+
+  @keyframes ui-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .motion-safe\:animate-ui-spin {
+    animation: ui-spin 0.65s linear infinite;
+  }
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .motion-safe\:animate-card-in {
+    animation: card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateX(16px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  .motion-safe\:animate-toast-in {
+    animation: toast-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Smooth interactive surfaces */
+  .ui-hover-surface {
+    transition-property: transform, box-shadow, background-color, border-color;
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe\:animate-float,
+  .motion-safe\:animate-float-slow,
+  .motion-safe\:animate-fade-in-up,
+  .motion-safe\:animate-fade-in,
+  .motion-safe\:animate-gradient,
+  .motion-safe\:animate-pulse-soft,
+  .motion-safe\:animate-ui-spin,
+  .motion-safe\:animate-card-in,
+  .motion-safe\:animate-toast-in {
+    animation: none !important;
+  }
+  .motion-safe\:animate-fade-in-up,
+  .motion-safe\:animate-fade-in,
+  .motion-safe\:animate-card-in {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
