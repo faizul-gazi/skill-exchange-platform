@@ -20,6 +20,8 @@ const initial = {
   email: '',
   password: '',
   confirmPassword: '',
+  role: 'learner',
+  specialist: '',
 }
 
 export default function RegisterPage() {
@@ -39,6 +41,12 @@ export default function RegisterPage() {
     const em = validateEmail(next.email)
     const pw = validatePassword(next.password)
     const cf = validateConfirmPassword(next.password, next.confirmPassword)
+    if (!['teacher', 'learner', 'both'].includes(next.role)) {
+      e.role = 'Please select a valid role'
+    }
+    if ((next.role === 'teacher' || next.role === 'both') && !next.specialist.trim()) {
+      e.specialist = 'Specialist is required for teacher or both role'
+    }
     if (n) e.name = n
     if (em) e.email = em
     if (pw) e.password = pw
@@ -71,6 +79,8 @@ export default function RegisterPage() {
       email: true,
       password: true,
       confirmPassword: true,
+      role: true,
+      specialist: true,
     })
     const e = runValidators(values)
     setErrors(e)
@@ -78,9 +88,21 @@ export default function RegisterPage() {
     setLoading(true)
     setFormError('')
     try {
-      const data = await register(values.name.trim(), values.email.trim(), values.password)
+      const data = await register(
+        values.name.trim(),
+        values.email.trim(),
+        values.password,
+        values.role,
+        values.specialist.trim(),
+      )
       const name = data?.user?.name?.trim()
-      toast.success(name ? `Account created for ${name}. Please sign in.` : 'Account created. Please sign in.')
+      if (values.role === 'teacher' || values.role === 'both') {
+        toast.info(
+          `Your account is under review. A confirmation has been sent to faizul@gmail.com for interview scheduling. Please check your email.`,
+        )
+      } else {
+        toast.success(name ? `Account created for ${name}. Please sign in.` : 'Account created. Please sign in.')
+      }
       navigate('/login', { replace: true, state: { from: location.state?.from } })
     } catch (err) {
       setFormError(getApiErrorMessage(err, 'Could not create your account. Try a different email.'))
@@ -116,7 +138,7 @@ export default function RegisterPage() {
               name="name"
               type="text"
               autoComplete="name"
-              placeholder="Alex Rivera"
+              placeholder="Faizul Islam"
               value={values.name}
               onChange={handleChange('name')}
               onBlur={handleBlur('name')}
@@ -159,6 +181,52 @@ export default function RegisterPage() {
               error={touched.confirmPassword ? errors.confirmPassword : ''}
               icon={<LockIcon />}
             />
+            <div>
+              <label
+                htmlFor="role"
+                className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200"
+              >
+                I want to join as
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={values.role}
+                onChange={handleChange('role')}
+                onBlur={handleBlur('role')}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              >
+                <option value="learner">Learner</option>
+                <option value="teacher">Teacher</option>
+                <option value="both">Both</option>
+              </select>
+              {touched.role && errors.role ? (
+                <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{errors.role}</p>
+              ) : null}
+            </div>
+            {(values.role === 'teacher' || values.role === 'both') ? (
+              <div>
+                <label
+                  htmlFor="specialist"
+                  className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200"
+                >
+                  Specialist
+                </label>
+                <input
+                  id="specialist"
+                  name="specialist"
+                  type="text"
+                  value={values.specialist}
+                  onChange={handleChange('specialist')}
+                  onBlur={handleBlur('specialist')}
+                  placeholder="e.g. MERN Stack, Spoken English, Data Science"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
+                {touched.specialist && errors.specialist ? (
+                  <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{errors.specialist}</p>
+                ) : null}
+              </div>
+            ) : null}
 
             <p className="text-xs text-slate-500 dark:text-slate-500">
               By signing up you agree to our{' '}

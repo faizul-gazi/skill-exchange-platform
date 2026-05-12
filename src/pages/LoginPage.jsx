@@ -58,7 +58,8 @@ export default function LoginPage() {
       const data = await login(values.email.trim(), values.password)
       const name = data?.user?.name?.trim()
       toast.success(name ? `Welcome back, ${name}!` : 'Signed in successfully.')
-      navigate('/dashboard', { replace: true })
+      const role = data?.user?.role
+      navigate(role === 'admin' ? '/admin' : '/dashboard', { replace: true })
     } catch (err) {
       const msg = getApiErrorMessage(err, 'Sign in failed. Check your email and password.')
       setFormError(msg)

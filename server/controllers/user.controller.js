@@ -69,7 +69,11 @@ export async function updateMyProfile(req, res, next) {
     if (nextAvatarUrl !== null) {
       updates.avatarUrl = nextAvatarUrl
     }
-    if (nextHeadline !== null) {
+    const currentUser = await User.findById(req.user.id).select('headlineLocked').lean()
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    if (!currentUser.headlineLocked && nextHeadline !== null) {
       updates.headline = nextHeadline
     }
     if (nextAbout !== null) {

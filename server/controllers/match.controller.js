@@ -8,7 +8,11 @@ export async function getMatches(req, res, next) {
       return res.status(404).json({ error: 'User not found' })
     }
 
-    const others = await User.find({ _id: { $ne: me._id } })
+    const others = await User.find({
+      _id: { $ne: me._id },
+      role: 'both',
+      isApproved: true,
+    })
       .select('-password')
       .lean()
 

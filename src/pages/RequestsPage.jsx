@@ -29,10 +29,15 @@ const STATUS = {
     className:
       'border-rose-200/90 bg-rose-50 text-rose-900 dark:border-rose-500/40 dark:bg-rose-950/50 dark:text-rose-100',
   },
+  completed: {
+    label: 'Completed',
+    className:
+      'border-slate-200/90 bg-slate-100 text-slate-800 dark:border-white/15 dark:bg-slate-800/80 dark:text-slate-200',
+  },
 }
 
 function StatusBadge({ status }) {
-  const cfg = STATUS[status]
+  const cfg = STATUS[status] ?? STATUS.pending
   return (
     <span
       className={cn(
@@ -48,6 +53,7 @@ function StatusBadge({ status }) {
 function mapIncoming(rows) {
   return rows.map((r) => ({
     id: r.id,
+    fromId: r.sender?.id ?? r.senderId,
     fromName: r.sender?.name ?? 'User',
     topic: r.meetingLink?.trim() ? r.meetingLink : 'Skill exchange',
     status: r.status,
@@ -58,6 +64,7 @@ function mapIncoming(rows) {
 function mapOutgoing(rows) {
   return rows.map((r) => ({
     id: r.id,
+    toId: r.receiver?.id ?? r.receiverId,
     toName: r.receiver?.name ?? 'User',
     topic: r.meetingLink?.trim() ? r.meetingLink : 'Skill exchange',
     status: r.status,
@@ -192,10 +199,10 @@ export default function RequestsPage() {
                       className="border-slate-200/70 py-10 dark:border-white/10"
                       icon={<InboxDownIcon />}
                       title="Inbox is empty"
-                      description="You don’t have any incoming skill exchange requests. When someone sends you a request from Matches, it will appear here for you to accept or decline."
+                      description="You don’t have any incoming skill exchange requests. When someone sends you a request from Skill Exchange, it will appear here for you to accept or decline."
                       action={
-                        <Button to="/matches" variant="secondary" size="sm">
-                          Browse matches
+                        <Button to="/skill-exchange" variant="secondary" size="sm">
+                          Open Skill Exchange
                         </Button>
                       }
                     />
@@ -212,6 +219,12 @@ export default function RequestsPage() {
                           <span className="text-xs text-slate-400 dark:text-slate-500">{row.when}</span>
                         </div>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{row.topic}</p>
+                        <Link
+                          to={`/users/${row.fromId}`}
+                          className="mt-1 inline-flex text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+                        >
+                          View profile details
+                        </Link>
                       </div>
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                         <StatusBadge status={row.status} />
@@ -241,9 +254,18 @@ export default function RequestsPage() {
                             </Button>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400 dark:text-slate-500 sm:min-w-[8rem] sm:text-right">
-                            No action needed
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {row.status === 'accepted' || row.status === 'completed' ? (
+                              <Button to={`/session?request=${row.id}`} size="sm" variant="secondary">
+                                {row.status === 'completed' ? 'View session' : 'Go to Session'}
+                              </Button>
+                            ) : null}
+                            {row.status === 'rejected' ? (
+                              <span className="text-xs text-slate-400 dark:text-slate-500 sm:min-w-[8rem] sm:text-right">
+                                No action needed
+                              </span>
+                            ) : null}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -271,22 +293,24 @@ export default function RequestsPage() {
                     <tr className="border-b border-slate-200/80 bg-white/50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-slate-400">
                       <th className="px-6 py-3 font-semibold">To</th>
                       <th className="px-6 py-3 font-semibold">Topic</th>
+                      <th className="px-6 py-3 font-semibold">Profile</th>
                       <th className="px-6 py-3 font-semibold">Status</th>
+                      <th className="px-6 py-3 font-semibold">Session</th>
                       <th className="px-6 py-3 font-semibold text-right">Sent</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/80 dark:divide-white/[0.08]">
                     {outgoing.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-10">
+                        <td colSpan={6} className="px-6 py-10">
                           <EmptyState
                             className="border-slate-200/70 py-8 dark:border-white/10"
                             icon={<InboxIcon />}
                             title="No outgoing requests yet"
-                            description="Send a request from Matches to start a skill exchange."
+                            description="Send a request from Skill Exchange to start a skill exchange."
                             action={
-                              <Button to="/matches" variant="primary" size="sm">
-                                Go to Matches
+                              <Button to="/skill-exchange" variant="primary" size="sm">
+                                Open Skill Exchange
                               </Button>
                             }
                           />
@@ -301,7 +325,19 @@ export default function RequestsPage() {
                           <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{row.toName}</td>
                           <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{row.topic}</td>
                           <td className="px-6 py-4">
+                            <Link to={`/users/${row.toId}`} className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-300">
+                              View profile
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4">
                             <StatusBadge status={row.status} />
+                          </td>
+                          <td className="px-6 py-4">
+                            {row.status === 'accepted' || row.status === 'completed' ? (
+                              <Button to={`/session?request=${row.id}`} size="sm" variant="secondary">
+                                {row.status === 'completed' ? 'View session' : 'Go to Session'}
+                              </Button>
+                            ) : null}
                           </td>
                           <td className="px-6 py-4 text-right text-xs text-slate-500 dark:text-slate-500">
                             {row.when}
@@ -320,10 +356,10 @@ export default function RequestsPage() {
                       className="border-slate-200/70 py-8 dark:border-white/10"
                       icon={<SendIcon />}
                       title="Nothing sent yet"
-                      description="Send a skill exchange request from Matches—it will show up here with its status."
+                      description="Send a skill exchange request from Skill Exchange - it will show up here with its status."
                       action={
-                        <Button to="/matches" variant="primary" size="sm" className="w-full sm:w-auto">
-                          Browse matches
+                        <Button to="/skill-exchange" variant="primary" size="sm" className="w-full sm:w-auto">
+                          Open Skill Exchange
                         </Button>
                       }
                     />
@@ -335,10 +371,21 @@ export default function RequestsPage() {
                         <div>
                           <p className="font-semibold text-slate-900 dark:text-white">{row.toName}</p>
                           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{row.topic}</p>
+                          <Link
+                            to={`/users/${row.toId}`}
+                            className="mt-1 inline-flex text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+                          >
+                            View profile details
+                          </Link>
                         </div>
                         <StatusBadge status={row.status} />
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-500">Sent {row.when}</p>
+                      {row.status === 'accepted' || row.status === 'completed' ? (
+                        <Button to={`/session?request=${row.id}`} size="sm" variant="secondary">
+                          {row.status === 'completed' ? 'View session' : 'Go to Session'}
+                        </Button>
+                      ) : null}
                     </div>
                   ))
                 )}

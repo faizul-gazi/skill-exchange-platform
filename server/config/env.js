@@ -10,4 +10,7 @@ export const env = {
   mongoUri: process.env.MONGODB_URI ?? '',
   jwtSecret: process.env.JWT_SECRET ?? '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
+  adminEmail: process.env.ADMIN_EMAIL ?? 'admin@skillx.local',
+  adminPassword: process.env.ADMIN_PASSWORD ?? 'Admin@123456',
+  adminName: process.env.ADMIN_NAME ?? 'SkillX Admin',
 }

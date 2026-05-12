@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { layoutContainerClass } from '../layouts/container.js'
 import { cn } from '../lib/cn.js'
 import { useAuth } from '../context/useAuth.js'
+import { api } from '../lib/api.js'
+import { userId as getAuthUserId } from '../lib/userId.js'
 import Button from './ui/Button.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 
@@ -14,20 +16,103 @@ const guestLinks = [
   { label: 'Articles', href: '/#articles', sectionId: 'articles' },
 ]
 
-const authLinks = [
+const baseAuthLinks = [
   { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Matches', href: '/matches' },
-  { label: 'Requests', href: '/requests' },
-  { label: 'Chat', href: '/chat' },
+  { label: 'Courses', href: '/courses' },
   { label: 'Profile', href: '/profile' },
 ]
+const learnerLinks = [{ label: 'My Courses', href: '/my-courses' }]
+/** Course-review badge (sum across courses you teach). Opens dedicated Reviews hub at /reviews. */
+const reviewsNavLink = { label: 'Reviews', href: '/reviews', badgeKey: 'courseReviewsReceived' }
+const bothRoleLinks = [
+  { label: 'My Teaching', href: '/teaching-courses' },
+  { label: 'Create Course', href: '/courses/create' },
+  { label: 'Skill Exchange', href: '/skill-exchange' },
+  { label: 'Requests', href: '/requests', badgeKey: 'pendingIncomingRequests' },
+  { label: 'Chat', href: '/chat' },
+  reviewsNavLink,
+]
+const teacherLinks = [
+  { label: 'My Teaching', href: '/teaching-courses' },
+  { label: 'Create Course', href: '/courses/create' },
+]
+const teacherAuthLinks = [
+  { label: 'Dashboard', href: '/dashboard' },
+  ...teacherLinks,
+  reviewsNavLink,
+  { label: 'Profile', href: '/profile' },
+]
+const adminLinks = [{ label: 'Admin Dashboard', href: '/admin' }]
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  const [pendingIncomingRequests, setPendingIncomingRequests] = useState(0)
+  const [courseReviewsNavCount, setCourseReviewsNavCount] = useState(0)
   const location = useLocation()
   const navigate = useNavigate()
-  const { isAuthenticated, logout } = useAuth()
-  const links = isAuthenticated ? authLinks : guestLinks
+  const { isAuthenticated, user, logout } = useAuth()
+
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'both' || !user?.isApproved) {
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data } = await api.get('/requests', { params: { type: 'incoming' } })
+        if (cancelled) return
+        const pendingCount = (data?.data ?? []).filter((r) => r.status === 'pending').length
+        setPendingIncomingRequests(pendingCount)
+      } catch {
+        if (!cancelled) setPendingIncomingRequests(0)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, user?.isApproved, user?.role])
+
+  useEffect(() => {
+    const id = isAuthenticated && user ? getAuthUserId(user) : null
+    const role = user?.role
+    if (!id || (role !== 'teacher' && role !== 'both')) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data } = await api.get(`/courses/teacher/${id}`)
+        if (cancelled) return
+        const rows = Array.isArray(data?.data) ? data.data : []
+        const sum = rows.reduce((acc, c) => acc + (Number(c?.reviewCount) || 0), 0)
+        setCourseReviewsNavCount(sum)
+      } catch {
+        if (!cancelled) setCourseReviewsNavCount(0)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, user])
+
+  const links = useMemo(() => {
+    if (!isAuthenticated) return guestLinks
+    if (user?.role === 'admin') return adminLinks
+    if (user?.role === 'both') {
+      return user?.isApproved
+        ? [...baseAuthLinks, ...learnerLinks, ...bothRoleLinks]
+        : [...baseAuthLinks, ...learnerLinks, reviewsNavLink]
+    }
+    if (user?.role === 'teacher') return teacherAuthLinks
+    return [...baseAuthLinks, ...learnerLinks]
+  }, [isAuthenticated, user?.isApproved, user?.role])
+
+  const getLinkBadge = (link) => {
+    if (link.badgeKey === 'pendingIncomingRequests') return pendingIncomingRequests
+    if (link.badgeKey === 'courseReviewsReceived')
+      return isAuthenticated && user && (user.role === 'teacher' || user.role === 'both')
+        ? courseReviewsNavCount
+        : 0
+    return 0
+  }
 
   const handleLogout = () => {
     logout()
@@ -90,7 +175,14 @@ export default function Navbar() {
                 ].join(' ')
               }
             >
-              {link.label}
+              <span className="inline-flex items-center gap-1.5">
+                {link.label}
+                {getLinkBadge(link) > 0 ? (
+                  <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    {getLinkBadge(link)}
+                  </span>
+                ) : null}
+              </span>
             </NavLink>
           ))}
         </nav>
@@ -154,9 +246,15 @@ export default function Navbar() {
                     : 'text-slate-700 hover:bg-indigo-500/10 hover:text-indigo-700 dark:text-slate-200 dark:hover:bg-white/[0.08]',
                 )
               }
-              onClick={(ev) => handleGuestSectionClick(ev, link)}
             >
-              {link.label}
+              <span className="inline-flex items-center gap-1.5">
+                {link.label}
+                {getLinkBadge(link) > 0 ? (
+                  <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    {getLinkBadge(link)}
+                  </span>
+                ) : null}
+              </span>
             </NavLink>
           ))}
           <hr className="my-3 border-slate-200/90 dark:border-white/10" />

@@ -1,6 +1,8 @@
 import mongoose from 'mongoose'
 import { Message } from '../models/Message.js'
+import { Request } from '../models/Request.js'
 import { User } from '../models/User.js'
+import { areUsersMatched } from '../utils/skillExchangeAccess.js'
 
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id)
@@ -31,6 +33,19 @@ function serializeMessage(doc) {
   }
 }
 
+async function findLatestExchangeBetween(userA, userB) {
+  return Request.findOne({
+    $or: [
+      { senderId: userA, receiverId: userB },
+      { senderId: userB, receiverId: userA },
+    ],
+    status: { $in: ['accepted', 'completed'] },
+  })
+    .sort({ updatedAt: -1 })
+    .select('_id status')
+    .lean()
+}
+
 export async function sendMessage(req, res, next) {
   try {
     const { receiverId, message, timestamp } = req.body ?? {}
@@ -49,9 +64,25 @@ export async function sendMessage(req, res, next) {
       return res.status(400).json({ error: 'message is required' })
     }
 
-    const receiver = await User.findById(receiverId).select('_id').lean()
+    const [sender, receiver] = await Promise.all([
+      User.findById(senderId).select('skillsOffered skillsWanted').lean(),
+      User.findById(receiverId).select('_id skillsOffered skillsWanted').lean(),
+    ])
+    if (!sender) {
+      return res.status(404).json({ error: 'Sender not found' })
+    }
     if (!receiver) {
       return res.status(404).json({ error: 'Receiver not found' })
+    }
+    if (!areUsersMatched(sender, receiver)) {
+      return res.status(403).json({ error: 'You can only message matched users' })
+    }
+    const exchange = await findLatestExchangeBetween(senderId, receiverId)
+    if (!exchange) {
+      return res.status(403).json({ error: 'Chat is available only after request acceptance' })
+    }
+    if (exchange.status === 'completed') {
+      return res.status(403).json({ error: 'This exchange is completed; chat is read-only.' })
     }
 
     let ts = new Date()
@@ -93,9 +124,22 @@ export async function getConversation(req, res, next) {
       return res.status(400).json({ error: 'Invalid peer id' })
     }
 
-    const peer = await User.findById(peerId).select('_id').lean()
+    const [meUser, peer] = await Promise.all([
+      User.findById(me).select('skillsOffered skillsWanted').lean(),
+      User.findById(peerId).select('_id skillsOffered skillsWanted').lean(),
+    ])
+    if (!meUser) {
+      return res.status(404).json({ error: 'User not found' })
+    }
     if (!peer) {
       return res.status(404).json({ error: 'User not found' })
+    }
+    if (!areUsersMatched(meUser, peer)) {
+      return res.status(403).json({ error: 'You can only view conversation with matched users' })
+    }
+    const exchange = await findLatestExchangeBetween(me, peerId)
+    if (!exchange) {
+      return res.status(403).json({ error: 'Chat is available only after request acceptance' })
     }
 
     const rows = await Message.find({

@@ -16,13 +16,21 @@ const requestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'rejected'],
+      enum: ['pending', 'accepted', 'rejected', 'completed'],
       default: 'pending',
+    },
+    completionConfirmedBy: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+      default: [],
     },
     meetingLink: {
       type: String,
       trim: true,
       default: '',
+    },
+    schedule: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true },

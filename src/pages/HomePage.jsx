@@ -7,8 +7,8 @@ import { cn } from '../lib/cn.js'
 
 const iconTiles = [
   {
-    title: 'Smart matches',
-    desc: 'Pair by skill, level, and availability.',
+    title: 'Specialist verification',
+    desc: 'Teacher and both-role accounts are reviewed before teaching access.',
     icon: (
       <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -18,8 +18,8 @@ const iconTiles = [
     ),
   },
   {
-    title: 'Requests',
-    desc: 'Ask for what you need—clear and polite.',
+    title: 'Course + payment flow',
+    desc: 'Buy with bKash, Nagad, or Rocket, then wait for admin approval.',
     icon: (
       <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -27,8 +27,8 @@ const iconTiles = [
     ),
   },
   {
-    title: 'Chat',
-    desc: 'Coordinate sessions without leaving the app.',
+    title: 'Session room',
+    desc: 'Accepted requests open a dedicated session page with info, meeting, and chat.',
     icon: (
       <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
@@ -36,8 +36,8 @@ const iconTiles = [
     ),
   },
   {
-    title: 'Your profile',
-    desc: 'Showcase teach & learn goals in one place.',
+    title: 'Role-based dashboards',
+    desc: 'Teacher, learner, both, and admin each get focused tools and navigation.',
     icon: (
       <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -49,18 +49,18 @@ const iconTiles = [
 
 const features = [
   {
-    title: 'Balanced exchanges',
-    body: 'Set expectations for time and topic so every swap feels fair.',
+    title: 'Verified teaching quality',
+    body: 'Teacher and both-role users share their specialist area and get approved before teaching features unlock.',
     accent: 'from-indigo-500 to-blue-500',
   },
   {
-    title: 'Trust-first',
-    body: 'Profiles, reviews, and clear requests build confidence fast.',
+    title: 'Structured session lifecycle',
+    body: 'Request -> accept -> schedule -> meeting link -> session room. Every step is clear for both users.',
     accent: 'from-violet-500 to-purple-600',
   },
   {
-    title: 'Flexible formats',
-    body: 'Online or in person—choose what works for your schedule.',
+    title: 'Learning + earning flow',
+    body: 'Create courses, review payments, approve enrollments, and run live or recorded classes from one platform.',
     accent: 'from-fuchsia-500 to-pink-500',
   },
 ]
@@ -68,18 +68,18 @@ const features = [
 const steps = [
   {
     n: '1',
-    title: 'Build your profile',
-    body: 'List what you teach, what you want to learn, and your availability.',
+    title: 'Register with your role',
+    body: 'Learners get instant access. Teacher or both users submit specialist info for verification.',
   },
   {
     n: '2',
-    title: 'Match & request',
-    body: 'Discover people, send requests, and agree on a session in chat.',
+    title: 'Get approved and start',
+    body: 'Admin reviews pending accounts and approvals unlock teaching and advanced exchange features.',
   },
   {
     n: '3',
-    title: 'Exchange & grow',
-    body: 'Meet, trade knowledge, then leave feedback for the next match.',
+    title: 'Run real sessions',
+    body: 'Use requests, meeting schedules, and session chat to complete classes and skill exchanges smoothly.',
   },
 ]
 
@@ -148,8 +148,8 @@ export default function HomePage() {
               <span className="text-slate-900 dark:text-white">Build connections.</span>
             </h1>
             <p className="motion-safe:animate-fade-in-up animation-delay-200 mt-6 max-w-lg text-lg leading-relaxed text-slate-600 dark:text-slate-300">
-              SkillX matches people who want to teach with people who want to learn—so every session
-              is a real exchange, not a one-way scroll.
+              SkillX combines verified teachers, structured course enrollment, and session-based skill exchange
+              so learning stays practical, trusted, and outcome-focused.
             </p>
             <div className="motion-safe:animate-fade-in-up animation-delay-300 mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button to="/register" variant="accent" size="lg" className="min-w-[200px] justify-center">
@@ -165,7 +165,7 @@ export default function HomePage() {
               </Button>
             </div>
             <p className="motion-safe:animate-fade-in animation-delay-400 mt-6 text-sm text-slate-500 dark:text-slate-500">
-              No credit card required · Join thousands learning together
+              Role-based access · Specialist verification · Session-ready workflow
             </p>
           </div>
           <HeroArt className="lg:justify-self-end" />
@@ -177,8 +177,8 @@ export default function HomePage() {
         <SectionHeading
           id="discover-heading"
           eyebrow="Discover"
-          title="Everything you need in one flow"
-          subtitle="From first hello to your next skill swap—tools that stay out of the way."
+          title="Built for real learning operations"
+          subtitle="From verified onboarding to session delivery, every step is now connected."
         />
         <ul
           className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
@@ -217,20 +217,20 @@ export default function HomePage() {
         <SectionHeading
           id="articles-heading"
           eyebrow="Articles"
-          title="Learn from quick practical guides"
-          subtitle="Short reads from the community to help you run better sessions and get stronger matches."
+          title="Platform highlights"
+          subtitle="A quick view of the strongest workflows currently available in SkillX."
         />
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {[
-            'How to structure a 30-minute skill swap',
-            'Profile tips that attract better matches',
-            'First-session checklist to avoid no-shows',
+            'Specialist verification for teaching roles',
+            'Paid course request and admin approval flow',
+            'Accepted-request session room with meeting + chat',
           ].map((article) => (
             <Card key={article} variant="glass" className="h-full">
               <Card.Body className="p-6">
                 <h3 className="text-base font-semibold text-slate-900 dark:text-white">{article}</h3>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                  Read practical tips and adapt them to your next learning exchange.
+                  Designed to reduce confusion and improve trust for learners, teachers, and admins.
                 </p>
               </Card.Body>
             </Card>
@@ -243,8 +243,8 @@ export default function HomePage() {
         <SectionHeading
           id="features-heading"
           eyebrow="Why SkillX"
-          title="Built for meaningful exchanges"
-          subtitle="Polished cards, soft shadows, and gradients that feel alive—without the noise."
+          title="Why this project stands out"
+          subtitle="Secure role logic, admin review controls, and focused UX for each user type."
         />
         <ul className="mt-12 grid gap-6 md:grid-cols-3" role="list">
           {features.map((f, i) => (
@@ -287,7 +287,7 @@ export default function HomePage() {
           id="how-heading"
           eyebrow="Simple"
           title="How it works"
-          subtitle="Three steps from signup to your first exchange."
+          subtitle="Three clear steps from registration to completed session."
         />
         <div className="relative mt-14">
           <div
@@ -341,8 +341,7 @@ export default function HomePage() {
             Ready to swap your first skill?
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-indigo-100">
-            Create a free account, say what you teach and what you want to learn—we will handle the
-            rest.
+            Create your account, complete your role workflow, and start structured sessions with confidence.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button

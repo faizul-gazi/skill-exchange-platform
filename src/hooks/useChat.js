@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/useAuth.js'
 import { api } from '../lib/api.js'
 import { getApiErrorMessage } from '../lib/apiError.js'
-import { userId } from '../lib/userId.js'
 
 function formatMsgTime(value) {
   if (value == null) return ''
@@ -13,7 +12,7 @@ function formatMsgTime(value) {
 
 export function useChat() {
   const { isAuthenticated, user } = useAuth()
-  const me = userId(user)
+  const me = user?.id ?? user?._id ?? ''
 
   const [peers, setPeers] = useState([])
   const [messagesByPeer, setMessagesByPeer] = useState({})
@@ -30,15 +29,26 @@ export function useChat() {
       setPeersLoading(true)
       setPeersError('')
       try {
-        const { data } = await api.get('/users')
-        const list = data.data ?? []
-        const mapped = list
-          .map((u) => ({
-            id: userId(u),
-            name: u.name ?? 'User',
-            subtitle: 'Member',
-          }))
-          .filter((p) => p.id && p.id !== me)
+        const { data } = await api.get('/requests', { params: { type: 'all' } })
+        const list = data?.data ?? []
+        const sorted = [...list].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+        const seenPeer = new Set()
+        const mapped = []
+        for (const r of sorted) {
+          if (r.status !== 'accepted' && r.status !== 'completed') continue
+          const incoming = String(r.receiverId) === String(me)
+          const peer = incoming ? r.sender : r.receiver
+          const peerRowId = incoming ? r.senderId : r.receiverId
+          const id = String(peer?.id ?? peerRowId ?? '')
+          if (!id || id === String(me) || seenPeer.has(id)) continue
+          seenPeer.add(id)
+          mapped.push({
+            id,
+            name: peer?.name ?? 'User',
+            subtitle: r.status === 'completed' ? 'Completed exchange (read-only)' : 'Accepted exchange',
+            readOnly: r.status === 'completed',
+          })
+        }
         if (!cancelled) {
           setPeers(mapped.slice(0, 40))
           setActiveId((prev) => {
@@ -95,6 +105,10 @@ export function useChat() {
   const send = useCallback(
     async (text) => {
       if (!activeId || !me) return { ok: false, error: 'Select a conversation first.' }
+      const peer = peers.find((p) => p.id === activeId)
+      if (peer?.readOnly) {
+        return { ok: false, error: 'This exchange is completed; chat is read-only.' }
+      }
       try {
         await api.post('/messages', { receiverId: activeId, message: text })
         const { data } = await api.get(`/messages/conversation/${activeId}`)
@@ -112,7 +126,7 @@ export function useChat() {
         return { ok: false, error: getApiErrorMessage(e, 'Could not send message.') }
       }
     },
-    [activeId, me],
+    [activeId, me, peers],
   )
 
   const messages = useMemo(

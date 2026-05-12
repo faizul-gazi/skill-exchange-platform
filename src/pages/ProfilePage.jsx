@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import Card from '../components/ui/Card.jsx'
 import Button from '../components/ui/Button.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
@@ -6,6 +7,10 @@ import PageHeader from '../components/ui/PageHeader.jsx'
 import { useToast } from '../context/useToast.js'
 import { useAuth } from '../context/useAuth.js'
 import { api } from '../lib/api.js'
+import { formatBDT } from '../lib/currency.js'
+import { getApiErrorMessage } from '../lib/apiError.js'
+import { formatShortDate } from '../lib/formatDate.js'
+import { userId } from '../lib/userId.js'
 import { LevelBadge, SkillTag } from '../components/profile/SkillTag.jsx'
 import { cn } from '../lib/cn.js'
 
@@ -53,6 +58,9 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [savingProfile, setSavingProfile] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [createdCourses, setCreatedCourses] = useState([])
+  const [enrolledCourses, setEnrolledCourses] = useState([])
+  const [coursesError, setCoursesError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -87,6 +95,37 @@ export default function ProfilePage() {
     }
   }, [toast, updateUser])
 
+  useEffect(() => {
+    const role = user?.role
+    const me = userId(user)
+    if (!me || !role) return
+    let cancelled = false
+
+    ;(async () => {
+      setCoursesError('')
+      try {
+        const wantsCreated = role === 'teacher' || role === 'both'
+        const wantsEnrolled = role === 'learner' || role === 'both'
+        const calls = [
+          wantsCreated ? api.get(`/courses/teacher/${me}`) : Promise.resolve({ data: { data: [] } }),
+          wantsEnrolled ? api.get('/enrollments/me') : Promise.resolve({ data: { data: [] } }),
+        ]
+        const [createdRes, enrolledRes] = await Promise.all(calls)
+        if (cancelled) return
+        setCreatedCourses(createdRes.data?.data ?? [])
+        setEnrolledCourses((enrolledRes.data?.data ?? []).map((x) => x.course).filter(Boolean))
+      } catch (e) {
+        if (!cancelled) {
+          setCoursesError(getApiErrorMessage(e, 'Could not load course sections.'))
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
   const handleAvatarFileChange = (event) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -110,6 +149,13 @@ export default function ProfilePage() {
   const [offerLevel, setOfferLevel] = useState('expert')
   const [wantedInput, setWantedInput] = useState('')
   const [availInput, setAvailInput] = useState('')
+  const role = user?.role
+  const isHeadlineLocked = Boolean(user?.headlineLocked)
+  const lockedHeadline = user?.specialist?.trim() || headline?.trim() || ''
+  const showCreatedCourses = role === 'teacher' || role === 'both'
+  const showEnrolledCourses = role === 'learner' || role === 'both'
+  const showAvailabilitySection = role === 'teacher' || role === 'both'
+  const showSkillExchangeSkills = role === 'both'
 
   const save = async () => {
     setSavingProfile(true)
@@ -117,11 +163,13 @@ export default function ProfilePage() {
       const payload = {
         name: normalizeName(displayName),
         avatarUrl,
-        headline: headline.trim().slice(0, 120),
         about: about.trim().slice(0, 600),
         skillsOffered: offered.map((item) => item.name),
         skillsWanted: wanted.map((item) => item.name),
         availability: availability.map((item) => item.label),
+      }
+      if (!isHeadlineLocked) {
+        payload.headline = headline.trim().slice(0, 120)
       }
       if (!payload.name) {
         toast.error('Name is required.')
@@ -261,7 +309,7 @@ export default function ProfilePage() {
                 </h2>
                 <p className="truncate text-sm text-slate-500 dark:text-slate-400">{user?.email}</p>
                 <p className="truncate text-sm text-indigo-600 dark:text-indigo-300">
-                  {headline?.trim() || 'Add a short headline to describe your specialization.'}
+                  {lockedHeadline || 'Add a short headline to describe your specialization.'}
                 </p>
               </div>
             </div>
@@ -345,10 +393,17 @@ export default function ProfilePage() {
                   maxLength={120}
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
+                  disabled={isHeadlineLocked}
                   placeholder="e.g. Frontend Developer | React Mentor | UI Specialist"
                   className="w-full rounded-xl border border-slate-200/90 bg-white/80 px-4 py-2.5 text-sm shadow-soft backdrop-blur placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/30 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-100"
                 />
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">{headline.length}/120</p>
+                {isHeadlineLocked ? (
+                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-300">
+                    Headline is locked after specialist verification approval.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">{headline.length}/120</p>
+                )}
               </div>
               <div>
                 <label htmlFor="profile-about" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -384,7 +439,93 @@ export default function ProfilePage() {
         </Card.Body>
       </Card>
 
+      {coursesError ? (
+        <Card variant="elevated">
+          <Card.Body>
+            <p className="text-sm text-rose-600 dark:text-rose-400">{coursesError}</p>
+          </Card.Body>
+        </Card>
+      ) : null}
+
+      {showCreatedCourses ? (
+        <Card variant="elevated">
+          <Card.Header>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">My Created Courses</h2>
+          </Card.Header>
+          <Card.Body className="space-y-2">
+            {createdCourses.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No created courses yet.</p>
+            ) : (
+              createdCourses.slice(0, 5).map((course) => (
+                <div key={course.id} className="rounded-xl border border-slate-200/80 px-3 py-2 dark:border-white/10">
+                  <p className="font-medium text-slate-900 dark:text-white">{course.title}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {formatBDT(course.price)} ·{' '}
+                    {formatShortDate(course.schedule) || 'TBA'}
+                  </p>
+                </div>
+              ))
+            )}
+            <Link
+              to="/teaching-courses"
+              className="inline-flex text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+            >
+              View all created courses
+            </Link>
+          </Card.Body>
+        </Card>
+      ) : null}
+
+      {showEnrolledCourses ? (
+        <Card variant="elevated">
+          <Card.Header>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">My Enrolled Courses</h2>
+          </Card.Header>
+          <Card.Body className="space-y-2">
+            {enrolledCourses.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No enrolled courses yet.</p>
+            ) : (
+              enrolledCourses.slice(0, 5).map((course) => (
+                <div key={course.id} className="rounded-xl border border-slate-200/80 px-3 py-2 dark:border-white/10">
+                  <p className="font-medium text-slate-900 dark:text-white">{course.title}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {course.teacherId ? (
+                      <Link
+                        to={`/users/${course.teacherId}`}
+                        className="font-semibold text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-300"
+                      >
+                        {course.teacherName?.trim() || 'Teacher profile'}
+                      </Link>
+                    ) : (
+                      course.teacherName || 'Unknown teacher'
+                    )}
+                  </p>
+                </div>
+              ))
+            )}
+            <Link
+              to="/my-courses"
+              className="inline-flex text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+            >
+              View all enrolled courses
+            </Link>
+          </Card.Body>
+        </Card>
+      ) : null}
+
+      {!showSkillExchangeSkills ? (
+        <Card variant="elevated">
+          <Card.Body>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Skills exchange fields (<strong>Skills you offer</strong> and <strong>Skills you want</strong>) are
+              available only for <strong>Both</strong> role users.
+            </p>
+          </Card.Body>
+        </Card>
+      ) : null}
+
       {/* Skills offered */}
+      {showSkillExchangeSkills ? (
       <Card variant="elevated">
         <Card.Header>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Skills you offer</h2>
@@ -458,8 +599,10 @@ export default function ProfilePage() {
           ) : null}
         </Card.Body>
       </Card>
+      ) : null}
 
       {/* Skills wanted */}
+      {showSkillExchangeSkills ? (
       <Card variant="elevated">
         <Card.Header>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Skills you want</h2>
@@ -511,8 +654,10 @@ export default function ProfilePage() {
           ) : null}
         </Card.Body>
       </Card>
+      ) : null}
 
       {/* Availability */}
+      {showAvailabilitySection ? (
       <Card variant="elevated">
         <Card.Header>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Availability</h2>
@@ -592,6 +737,7 @@ export default function ProfilePage() {
           ) : null}
         </Card.Body>
       </Card>
+      ) : null}
 
       <div className="flex justify-end gap-3 pb-4">
         <Button

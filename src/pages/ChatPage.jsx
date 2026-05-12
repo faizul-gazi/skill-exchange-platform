@@ -122,8 +122,8 @@ export default function ChatPage() {
                   title="No contacts yet"
                   description="When other members join, they will appear here so you can start a chat."
                   action={
-                    <Button to="/matches" variant="secondary" size="sm" className="text-xs">
-                      Discover matches
+                    <Button to="/skill-exchange" variant="secondary" size="sm" className="text-xs">
+                      Open Skill Exchange
                     </Button>
                   }
                 />
@@ -219,11 +219,11 @@ export default function ChatPage() {
                   className="max-w-md border-slate-300/70 bg-white/85 py-14 shadow-sm dark:border-white/10 dark:bg-slate-800/60"
                   icon={<ChatBubbleIcon />}
                   title="No conversations yet"
-                  description="There are no other members to message right now. Find people to connect with from Matches, then open Chat to talk."
+                  description="There are no other members to message right now. Find people to connect with from Skill Exchange, then open Chat to talk."
                   action={
                     <div className="flex flex-wrap items-center justify-center gap-3">
-                      <Button to="/matches" variant="primary" size="md">
-                        Browse matches
+                      <Button to="/skill-exchange" variant="primary" size="md">
+                        Open Skill Exchange
                       </Button>
                       <Link
                         to="/requests"
@@ -291,6 +291,11 @@ export default function ChatPage() {
           </div>
 
           <div className="shrink-0 border-t border-slate-300/80 bg-white/95 px-3 py-3 backdrop-blur-sm dark:border-white/10 dark:bg-slate-900/95">
+            {activeUser?.readOnly ? (
+              <p className="mx-auto mb-2 max-w-3xl rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-2 text-center text-xs text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
+                This skill exchange is completed. You can read messages but not send new ones.
+              </p>
+            ) : null}
             <div className="mx-auto flex max-w-3xl items-end gap-2">
               <label htmlFor="chat-input" className="sr-only">
                 Message
@@ -301,12 +306,18 @@ export default function ChatPage() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder={activeId ? 'Write a message…' : 'Select a chat'}
-                disabled={!activeId || sending}
+                placeholder={
+                  activeUser?.readOnly
+                    ? 'Chat is read-only'
+                    : activeId
+                      ? 'Write a message…'
+                      : 'Select a chat'
+                }
+                disabled={!activeId || sending || activeUser?.readOnly}
                 className={cn(
                   'max-h-32 min-h-[44px] flex-1 resize-y rounded-2xl border border-slate-200/90 bg-slate-100 px-4 py-2.5 text-[15px] text-slate-900 placeholder:text-slate-500',
                   'shadow-inner transition-[box-shadow,transform] duration-200 focus:border-indigo-300/80 focus:outline-none focus:ring-2 focus:ring-indigo-400/35 dark:border-white/10 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500',
-                  !activeId && 'cursor-not-allowed opacity-60',
+                  (!activeId || activeUser?.readOnly) && 'cursor-not-allowed opacity-60',
                 )}
               />
               <Button
@@ -315,7 +326,7 @@ export default function ChatPage() {
                 size="md"
                 className="h-11 shrink-0 rounded-2xl px-5"
                 loading={sending}
-                disabled={!draft.trim() || !activeId}
+                disabled={!draft.trim() || !activeId || activeUser?.readOnly}
                 onClick={sendMessage}
               >
                 Send

@@ -3,6 +3,7 @@ import { User } from '../models/User.js'
 import { signToken } from '../utils/jwt.js'
 
 const SALT_ROUNDS = 10
+const REGISTRATION_ROLES = new Set(['teacher', 'learner', 'both'])
 
 function normalizeStringArray(value) {
   if (value == null) return []
@@ -14,7 +15,7 @@ function normalizeStringArray(value) {
 
 export async function register(req, res, next) {
   try {
-    const { name, email, password, skillsOffered, skillsWanted, availability } = req.body ?? {}
+    const { name, email, password, role, specialist, skillsOffered, skillsWanted, availability } = req.body ?? {}
 
     if (typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ error: 'Name is required' })
@@ -25,6 +26,14 @@ export async function register(req, res, next) {
     if (typeof password !== 'string' || password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' })
     }
+    if (typeof role !== 'string' || !REGISTRATION_ROLES.has(role.trim())) {
+      return res.status(400).json({ error: 'Role must be one of: teacher, learner, both' })
+    }
+    const normalizedRole = role.trim()
+    const normalizedSpecialist = typeof specialist === 'string' ? specialist.trim() : ''
+    if ((normalizedRole === 'teacher' || normalizedRole === 'both') && !normalizedSpecialist) {
+      return res.status(400).json({ error: 'Specialist field is required for teacher or both role' })
+    }
 
     const existing = await User.findOne({ email: email.toLowerCase().trim() }).lean()
     if (existing) {
@@ -33,22 +42,34 @@ export async function register(req, res, next) {
 
     const hashed = await bcrypt.hash(password, SALT_ROUNDS)
 
+    const isApproved = normalizedRole === 'learner'
+
     const doc = await User.create({
       name: name.trim(),
       email: email.trim(),
       password: hashed,
-      role: 'user',
+      role: normalizedRole,
+      isApproved,
+      specialist: normalizedSpecialist,
+      headline: '',
+      headlineLocked: false,
       skillsOffered: normalizeStringArray(skillsOffered),
       skillsWanted: normalizeStringArray(skillsWanted),
       availability: normalizeStringArray(availability),
     })
 
     const user = doc.toJSON()
-    const token = signToken({ sub: doc._id.toString(), role: doc.role })
+    const token = signToken({ sub: doc._id.toString(), role: doc.role, isApproved: doc.isApproved })
 
     return res.status(201).json({
       token,
       user,
+      ...(normalizedRole === 'teacher' || normalizedRole === 'both'
+        ? {
+            message:
+              'Your account is under review. A confirmation has been sent to faizul@gmail.com for interview scheduling. Please check your email.',
+          }
+        : {}),
     })
   } catch (err) {
     if (err.code === 11000) {
@@ -79,7 +100,7 @@ export async function login(req, res, next) {
       return res.status(401).json({ error: 'Invalid email or password' })
     }
 
-    const token = signToken({ sub: user._id.toString(), role: user.role })
+    const token = signToken({ sub: user._id.toString(), role: user.role, isApproved: user.isApproved })
     const safe = user.toJSON()
 
     return res.json({

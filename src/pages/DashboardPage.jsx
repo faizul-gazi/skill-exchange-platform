@@ -3,81 +3,98 @@ import { Link } from 'react-router-dom'
 import Card from '../components/ui/Card.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import AlertMessage from '../components/ui/AlertMessage.jsx'
+import Button from '../components/ui/Button.jsx'
 import { DashboardSkeleton } from '../components/ui/Skeleton.jsx'
 import { useAuth } from '../context/useAuth.js'
 import { api } from '../lib/api.js'
 import { getApiErrorMessage } from '../lib/apiError.js'
-import { formatShortDate } from '../lib/formatDate.js'
 import { userId } from '../lib/userId.js'
 import { cn } from '../lib/cn.js'
 
-const activityStyles = {
-  match: {
-    label: 'Match',
-    chip: 'bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200',
-    Icon: MatchesIcon,
-  },
-  request: {
-    label: 'Request',
-    chip: 'bg-violet-500/15 text-violet-700 dark:bg-violet-500/20 dark:text-violet-200',
-    Icon: RequestsIcon,
-  },
-  review: {
-    label: 'Review',
-    chip: 'bg-fuchsia-500/15 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-200',
-    Icon: ReviewsIcon,
-  },
+function formatSessionSchedule(value) {
+  if (!value) return 'Not scheduled'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Not scheduled'
+  return date.toLocaleString()
 }
 
-function buildActivityFromRequests(rows, me) {
-  const meStr = String(me)
-  return [...rows]
-    .sort((a, b) => new Date(b.updatedAt ?? b.createdAt) - new Date(a.updatedAt ?? a.createdAt))
-    .slice(0, 8)
-    .map((r) => {
-      const sid = String(r.senderId ?? r.sender?._id ?? r.sender?.id ?? '')
-      const outgoing = sid === meStr
-      const other = outgoing ? r.receiver?.name ?? 'User' : r.sender?.name ?? 'User'
-      const topic = r.meetingLink?.trim() ? r.meetingLink : 'Skill exchange'
-      return {
-        id: r.id,
-        kind: 'request',
-        title: `${outgoing ? 'Sent to' : 'From'} ${other}: ${topic} (${r.status})`,
-        time: formatShortDate(r.updatedAt ?? r.createdAt),
-      }
-    })
+/** Sum of reviewCount + weighted average rating across taught courses. */
+function aggregateCourseReviews(rows) {
+  const list = Array.isArray(rows) ? rows : []
+  let total = 0
+  let weighted = 0
+  for (const c of list) {
+    const n = Number(c?.reviewCount) || 0
+    const avg = c?.reviewAverage != null ? Number(c.reviewAverage) : NaN
+    total += n
+    if (n > 0 && Number.isFinite(avg)) weighted += avg * n
+  }
+  const overallAvg = total > 0 ? Math.round((weighted / total) * 10) / 10 : null
+  return { total, overallAvg }
 }
 
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuth()
   const me = userId(user)
   const userName = user?.name ?? 'there'
+  const role = user?.role
+  const isBothRole = role === 'both'
+  const isTeacherRole = role === 'teacher'
+  const isLearnerRole = role === 'learner'
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [totalMatches, setTotalMatches] = useState(0)
   const [totalRequests, setTotalRequests] = useState(0)
   const [pendingIncoming, setPendingIncoming] = useState(0)
-  const [reviewsCount, setReviewsCount] = useState(0)
-  const [reviewsAvg, setReviewsAvg] = useState(null)
-  const [recentActivity, setRecentActivity] = useState([])
+  const [courseReviewsTotal, setCourseReviewsTotal] = useState(0)
+  const [courseReviewsAvg, setCourseReviewsAvg] = useState(null)
+  const [createdCoursesCount, setCreatedCoursesCount] = useState(0)
+  const [enrolledCoursesCount, setEnrolledCoursesCount] = useState(0)
+  const [bothRequests, setBothRequests] = useState([])
 
   useEffect(() => {
-    if (!isAuthenticated || !me) return
+    if (!isAuthenticated || !me || isBothRole) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        if (isTeacherRole) {
+          const createdRes = await api.get(`/courses/teacher/${me}`)
+          if (cancelled) return
+          const rows = createdRes?.data?.data ?? []
+          setCreatedCoursesCount(rows.length)
+          const agg = aggregateCourseReviews(rows)
+          setCourseReviewsTotal(agg.total)
+          setCourseReviewsAvg(agg.overallAvg)
+        }
+        if (isLearnerRole) {
+          const enrolledRes = await api.get('/enrollments/me')
+          if (cancelled) return
+          const rows = enrolledRes?.data?.data ?? []
+          setEnrolledCoursesCount(rows.length)
+        }
+      } catch {
+        // keep non-both dashboard resilient
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, isBothRole, isLearnerRole, isTeacherRole, me])
+
+  useEffect(() => {
+    if (!isAuthenticated || !me || !isBothRole) return
     let cancelled = false
     ;(async () => {
       setLoading(true)
       setError('')
       try {
-        const [matchesRes, reqRes, reviewsRes] = await Promise.all([
-          api.get('/matches'),
+        const [reqRes, createdRes, enrolledRes] = await Promise.all([
           api.get('/requests', { params: { type: 'all' } }),
-          api.get(`/reviews/user/${me}`).catch(() => ({ data: { data: [], meta: {} } })),
+          api.get(`/courses/teacher/${me}`).catch(() => ({ data: { data: [] } })),
+          api.get('/enrollments/me').catch(() => ({ data: { data: [] } })),
         ])
         if (cancelled) return
-        const matchRows = matchesRes.data?.data ?? []
         const reqRows = reqRes.data?.data ?? []
-        setTotalMatches(matchRows.length)
         setTotalRequests(reqRows.length)
         setPendingIncoming(
           reqRows.filter((r) => {
@@ -85,10 +102,13 @@ export default function DashboardPage() {
             return rid === String(me) && r.status === 'pending'
           }).length,
         )
-        const revMeta = reviewsRes.data?.meta ?? {}
-        setReviewsCount(revMeta.count ?? (reviewsRes.data?.data?.length ?? 0))
-        setReviewsAvg(revMeta.averageRating ?? null)
-        setRecentActivity(buildActivityFromRequests(reqRows, me))
+        setBothRequests(reqRows)
+        const createdRows = createdRes.data?.data ?? []
+        setCreatedCoursesCount(createdRows.length)
+        const agg = aggregateCourseReviews(createdRows)
+        setCourseReviewsTotal(agg.total)
+        setCourseReviewsAvg(agg.overallAvg)
+        setEnrolledCoursesCount((enrolledRes.data?.data ?? []).length)
       } catch (e) {
         if (!cancelled) {
           setError(getApiErrorMessage(e, 'Could not load dashboard.'))
@@ -100,18 +120,27 @@ export default function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, me])
+  }, [isAuthenticated, isBothRole, me])
 
   const summaryStats = useMemo(
     () => [
       {
-        key: 'matches',
-        label: 'Total Matches',
-        value: totalMatches,
-        hint: 'From your discovery feed',
-        gradient: 'from-indigo-500 to-blue-600',
-        icon: MatchesIcon,
-        to: '/matches',
+        key: 'createdCourses',
+        label: 'Created Courses',
+        value: createdCoursesCount,
+        hint: user?.isApproved ? 'Your teaching catalog' : 'Pending teaching approval',
+        gradient: 'from-emerald-500 to-teal-600',
+        icon: CoursesIcon,
+        to: '/teaching-courses',
+      },
+      {
+        key: 'enrolledCourses',
+        label: 'Enrolled Courses',
+        value: enrolledCoursesCount,
+        hint: 'Your learning path',
+        gradient: 'from-sky-500 to-cyan-600',
+        icon: LearnIcon,
+        to: '/my-courses',
       },
       {
         key: 'requests',
@@ -123,17 +152,40 @@ export default function DashboardPage() {
         to: '/requests',
       },
       {
-        key: 'reviews',
-        label: 'Reviews',
-        value: reviewsCount,
-        hint: reviewsAvg != null ? `${reviewsAvg} avg rating` : 'Reviews received',
+        key: 'courseReviews',
+        label: 'Course reviews',
+        value: courseReviewsTotal,
+        hint:
+          courseReviewsAvg != null
+            ? `${courseReviewsAvg} avg · learner ratings`
+            : 'Ratings on your taught courses',
         gradient: 'from-fuchsia-500 to-pink-500',
         icon: ReviewsIcon,
         to: '/reviews',
       },
     ],
-    [pendingIncoming, reviewsAvg, reviewsCount, totalMatches, totalRequests],
+    [
+      courseReviewsAvg,
+      courseReviewsTotal,
+      createdCoursesCount,
+      enrolledCoursesCount,
+      pendingIncoming,
+      totalRequests,
+      user?.isApproved,
+    ],
   )
+
+  const requestsForPanel = useMemo(() => {
+    if (!Array.isArray(bothRequests)) return []
+    const order = { pending: 0, accepted: 1, rejected: 2 }
+    return [...bothRequests]
+      .sort((a, b) => {
+        const s = (order[a.status] ?? 9) - (order[b.status] ?? 9)
+        if (s !== 0) return s
+        return new Date(b.updatedAt ?? b.createdAt) - new Date(a.updatedAt ?? a.createdAt)
+      })
+      .slice(0, 6)
+  }, [bothRequests])
 
   return (
     <div className="space-y-8 md:space-y-10">
@@ -148,8 +200,17 @@ export default function DashboardPage() {
             Welcome back, {userName}
           </h1>
           <p className="mt-3 max-w-2xl text-slate-600 dark:text-slate-400">
-            Here&apos;s what&apos;s happening with your skill exchanges—matches, requests, and feedback at a
-            glance.
+            {isTeacherRole
+              ? 'Your account is set up for course management tools. Once approved, you can start teaching.'
+              : null}
+            {isLearnerRole
+              ? 'Your account is set up for learning tools. Browse and enroll in courses from your dashboard features.'
+              : null}
+            {isBothRole
+              ? user?.isApproved
+                ? 'You can teach, learn, and join skill exchanges from one account.'
+                : 'Your both-role account is pending admin approval. Teaching and skill exchange features unlock after approval.'
+              : null}
           </p>
           {error ? (
             <AlertMessage variant="error" className="relative mt-4 max-w-2xl">
@@ -159,9 +220,9 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {loading ? <DashboardSkeleton /> : null}
+      {loading && isBothRole ? <DashboardSkeleton /> : null}
 
-      {!loading ? (
+      {!loading && isBothRole ? (
         <>
           <section aria-labelledby="summary-heading">
             <h2 id="summary-heading" className="sr-only">
@@ -207,93 +268,156 @@ export default function DashboardPage() {
             </ul>
           </section>
 
-          <section aria-labelledby="activity-heading">
+          <section aria-labelledby="session-heading">
             <Card variant="elevated" className="overflow-hidden">
               <Card.Header className="flex flex-col gap-1 border-slate-200/80 bg-slate-50/50 px-6 py-5 dark:border-white/[0.08] dark:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 id="activity-heading" className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Recent activity
+                  <h2 id="session-heading" className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Session Shortcuts
                   </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Latest updates from your requests</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Jump directly into accepted sessions.
+                  </p>
                 </div>
+                <Link to="/requests" className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-300">
+                  Manage all requests
+                </Link>
               </Card.Header>
-              <Card.Body className="p-0">
-                {recentActivity.length === 0 ? (
+              <Card.Body className="space-y-3 p-6">
+                {requestsForPanel.filter((r) => r.status === 'accepted').length === 0 ? (
                   <EmptyState
-                    className="m-6 border-slate-200/80 py-12 dark:border-white/10"
-                    icon={<InboxStrokeIcon />}
-                    title="No recent activity"
-                    description="When you send or receive requests, they will appear here."
+                    className="border-slate-200/80 py-10 dark:border-white/10"
+                    title="No active sessions yet"
+                    description="Accepted requests will appear here with quick session access."
                   />
                 ) : (
-                  <ul className="divide-y divide-slate-200/80 dark:divide-white/[0.08]" role="list">
-                    {recentActivity.map((item) => {
-                      const cfg = activityStyles[item.kind]
-                      const Icon = cfg.Icon
-                      return (
-                        <li key={item.id} className="group">
-                          <div className="flex gap-4 px-6 py-4 transition-colors duration-200 hover:bg-slate-50/80 dark:hover:bg-white/[0.04]">
-                            <div
-                              className={cn(
-                                'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105',
-                                cfg.chip,
-                              )}
-                              aria-hidden
+                  requestsForPanel
+                    .filter((r) => r.status === 'accepted')
+                    .map((r) => {
+                    const isIncoming = String(r.receiverId ?? '') === String(me)
+                    const peer = isIncoming ? r.sender?.name ?? 'User' : r.receiver?.name ?? 'User'
+                    return (
+                      <div key={r.id} className="rounded-xl border border-slate-200/80 p-3 dark:border-white/10">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {isIncoming ? 'From' : 'To'} {peer}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                          Schedule: {formatSessionSchedule(r.schedule)}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {r.meetingLink?.trim() ? (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => window.open(r.meetingLink, '_blank', 'noopener,noreferrer')}
                             >
-                              <Icon className="h-5 w-5" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span
-                                  className={cn(
-                                    'inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                                    cfg.chip,
-                                  )}
-                                >
-                                  {cfg.label}
-                                </span>
-                              </div>
-                              <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">{item.title}</p>
-                            </div>
-                            <span className="shrink-0 text-xs text-slate-500 dark:text-slate-500">{item.time}</span>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                              Join Session
+                            </Button>
+                          ) : null}
+                          <Button to={`/session?request=${r.id}`} size="sm" variant="outline">
+                            Go to Session
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                    })
                 )}
               </Card.Body>
             </Card>
           </section>
         </>
       ) : null}
+
+      {!isBothRole ? (
+        <section className="grid gap-4 md:grid-cols-3">
+          <Card variant="elevated">
+            <Card.Body className="p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                {isTeacherRole ? 'Teacher dashboard' : 'Learner dashboard'}
+              </h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                {isTeacherRole
+                  ? user?.isApproved
+                    ? 'You can manage teaching-related actions from your teacher workspace.'
+                    : 'Your teacher account is pending admin approval before teacher-only features unlock.'
+                  : 'Use learner tools to browse courses and manage your enrollments.'}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                {(isTeacherRole && user?.isApproved) || isBothRole ? (
+                  <Link
+                    to="/teaching-courses"
+                    className="font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+                  >
+                    Go to My Teaching
+                  </Link>
+                ) : null}
+                {(isLearnerRole || isBothRole) ? (
+                  <Link to="/my-courses" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-300">
+                    My Enrolled Courses
+                  </Link>
+                ) : null}
+                {isLearnerRole || isBothRole ? (
+                  <Link to="/courses" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-300">
+                    Browse Courses
+                  </Link>
+                ) : null}
+              </div>
+            </Card.Body>
+          </Card>
+          {isTeacherRole ? (
+            <Card variant="elevated">
+              <Card.Body className="p-6">
+                <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400">Created Courses</h2>
+                <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{createdCoursesCount}</p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {user?.isApproved ? 'Your teaching catalog is active.' : 'Waiting for admin approval to teach.'}
+                </p>
+              </Card.Body>
+            </Card>
+          ) : null}
+          {isLearnerRole ? (
+            <Card variant="elevated">
+              <Card.Body className="p-6">
+                <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400">Enrolled Courses</h2>
+                <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{enrolledCoursesCount}</p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  Keep learning from your active classes.
+                </p>
+              </Card.Body>
+            </Card>
+          ) : null}
+          {isTeacherRole ? (
+            <Card variant="elevated">
+              <Card.Body className="p-6">
+                <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400">Course reviews</h2>
+                <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{courseReviewsTotal}</p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {courseReviewsAvg != null
+                    ? `${courseReviewsAvg} average across enrolled learner ratings`
+                    : 'Learners rate after a course is completed'}
+                </p>
+                <Link
+                  to="/reviews"
+                  className="mt-3 inline-flex text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+                >
+                  Open Reviews
+                </Link>
+              </Card.Body>
+            </Card>
+          ) : null}
+          <Card variant="elevated">
+            <Card.Body className="p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                {isTeacherRole || isLearnerRole ? 'Upgrade to Both' : 'Role setup'}
+              </h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                Switch your role to <strong>Both</strong> to access full teaching, learning, and skill exchange tools.
+              </p>
+            </Card.Body>
+          </Card>
+        </section>
+      ) : null}
     </div>
-  )
-}
-
-function InboxStrokeIcon() {
-  return (
-    <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.75}
-        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-      />
-    </svg>
-  )
-}
-
-function MatchesIcon({ className = 'h-6 w-6' }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-      />
-    </svg>
   )
 }
 
@@ -319,6 +443,27 @@ function ReviewsIcon({ className = 'h-6 w-6' }) {
         strokeWidth={2}
         d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
       />
+    </svg>
+  )
+}
+
+function CoursesIcon({ className = 'h-6 w-6' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 6.253v13m0-13C10.832 5.483 9.246 5 7.5 5A4.5 4.5 0 003 9.5v8A4.5 4.5 0 017.5 13c1.746 0 3.332.483 4.5 1.253m0-8C13.168 5.483 14.754 5 16.5 5A4.5 4.5 0 0121 9.5v8a4.5 4.5 0 00-4.5-4.5c-1.746 0-3.332.483-4.5 1.253"
+      />
+    </svg>
+  )
+}
+
+function LearnIcon({ className = 'h-6 w-6' }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
     </svg>
   )
 }

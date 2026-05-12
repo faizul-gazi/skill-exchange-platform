@@ -1,9 +1,23 @@
 import mongoose from 'mongoose'
+import { Request } from '../models/Request.js'
 import { Review } from '../models/Review.js'
 import { User } from '../models/User.js'
 
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id)
+}
+
+/** Exchange is complete only after both participants confirmed (Request status → completed). */
+function findCompletedExchangeBetween(reviewerId, targetUserId) {
+  return Request.findOne({
+    status: 'completed',
+    $or: [
+      { senderId: reviewerId, receiverId: targetUserId },
+      { senderId: targetUserId, receiverId: reviewerId },
+    ],
+  })
+    .select('_id')
+    .lean()
 }
 
 function serializeReview(doc) {
@@ -58,6 +72,14 @@ export async function submitReview(req, res, next) {
       return res.status(404).json({ error: 'User not found' })
     }
 
+    const completedExchange = await findCompletedExchangeBetween(reviewerId, userId)
+    if (!completedExchange) {
+      return res.status(403).json({
+        error:
+          'You can review someone only after a skill exchange together is marked complete by both participants.',
+      })
+    }
+
     const text = typeof comment === 'string' ? comment.trim() : ''
 
     try {
@@ -80,6 +102,30 @@ export async function submitReview(req, res, next) {
       }
       throw err
     }
+  } catch (err) {
+    return next(err)
+  }
+}
+
+export async function getExchangeReviewEligibility(req, res, next) {
+  try {
+    const { targetUserId } = req.params
+    const reviewerId = req.user.id
+
+    if (!isValidObjectId(targetUserId)) {
+      return res.status(400).json({ error: 'Invalid user id' })
+    }
+    if (String(targetUserId) === String(reviewerId)) {
+      return res.json({ eligible: false })
+    }
+
+    const exists = await User.findById(targetUserId).select('_id').lean()
+    if (!exists) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const completedExchange = await findCompletedExchangeBetween(reviewerId, targetUserId)
+    return res.json({ eligible: Boolean(completedExchange) })
   } catch (err) {
     return next(err)
   }
