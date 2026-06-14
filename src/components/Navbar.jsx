@@ -9,11 +9,11 @@ import Button from './ui/Button.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 
 const guestLinks = [
-  { label: 'Home', href: '/' },
+  { label: 'Home', href: '/', sectionId: 'hero' },
   { label: 'About', href: '/#about', sectionId: 'about' },
+  { label: 'Articles', href: '/#articles', sectionId: 'articles' },
   { label: 'Features', href: '/#features', sectionId: 'features' },
   { label: 'How It Works', href: '/#how-it-works', sectionId: 'how-it-works' },
-  { label: 'Articles', href: '/#articles', sectionId: 'articles' },
 ]
 
 const baseAuthLinks = [
@@ -51,6 +51,46 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { isAuthenticated, user, logout } = useAuth()
+  const [activeSection, setActiveSection] = useState('hero')
+
+  useEffect(() => {
+    if (location.pathname !== '/') return
+
+    const sections = ['hero', 'about', 'articles', 'features', 'how-it-works']
+
+    const observerCallback = (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setActiveSection(entry.target.id)
+        }
+      })
+    }
+
+    const observer = new IntersectionObserver(observerCallback, {
+      root: null,
+      rootMargin: '-30% 0px -60% 0px',
+      threshold: 0,
+    })
+
+    sections.forEach((id) => {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    })
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [location.pathname])
+
+  const isLinkActive = (link, routeActive) => {
+    if (location.pathname !== '/') {
+      return routeActive && !link.sectionId
+    }
+    if (link.sectionId) {
+      return activeSection === link.sectionId
+    }
+    return activeSection === 'hero'
+  }
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'both' || !user?.isApproved) {
@@ -133,7 +173,11 @@ export default function Navbar() {
     const target = document.getElementById(link.sectionId)
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      window.history.replaceState(null, '', `/#${link.sectionId}`)
+      if (link.sectionId === 'hero') {
+        window.history.replaceState(null, '', '/')
+      } else {
+        window.history.replaceState(null, '', `/#${link.sectionId}`)
+      }
     }
     setOpen(false)
   }
@@ -169,7 +213,7 @@ export default function Navbar() {
               className={({ isActive }) =>
                 [
                   'whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ease-out',
-                  isActive
+                  isLinkActive(link, isActive)
                     ? 'bg-indigo-500/15 text-indigo-700 dark:bg-white/10 dark:text-indigo-200'
                     : 'text-slate-600 hover:-translate-y-px hover:bg-indigo-500/10 hover:text-indigo-700 dark:text-slate-300 dark:hover:bg-white/[0.08] dark:hover:text-indigo-200',
                 ].join(' ')
@@ -241,7 +285,7 @@ export default function Navbar() {
               className={({ isActive }) =>
                 cn(
                   'rounded-xl px-3 py-2.5 text-sm font-medium transition',
-                  isActive
+                  isLinkActive(link, isActive)
                     ? 'bg-indigo-500/15 text-indigo-700 dark:bg-white/10 dark:text-indigo-200'
                     : 'text-slate-700 hover:bg-indigo-500/10 hover:text-indigo-700 dark:text-slate-200 dark:hover:bg-white/[0.08]',
                 )

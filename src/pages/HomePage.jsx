@@ -126,6 +126,7 @@ export default function HomePage() {
     <div className="flex flex-col gap-16 pb-4 md:gap-24 lg:gap-28">
       {/* Hero */}
       <section
+        id="hero"
         aria-labelledby="hero-heading"
         className="relative overflow-hidden rounded-[2rem] border border-white/50 bg-gradient-to-br from-white/90 via-indigo-50/80 to-blue-50/70 p-8 shadow-soft-lg backdrop-blur-xl dark:border-white/[0.08] dark:from-slate-900/90 dark:via-indigo-950/50 dark:to-slate-950/80 sm:p-10 lg:p-14"
       >
