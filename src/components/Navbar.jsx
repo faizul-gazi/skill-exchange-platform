@@ -11,9 +11,9 @@ import ThemeToggle from './ThemeToggle.jsx'
 const guestLinks = [
   { label: 'Home', href: '/' },
   { label: 'About', href: '/#about', sectionId: 'about' },
-  { label: 'Articles', href: '/#articles', sectionId: 'articles' },
   { label: 'Features', href: '/#features', sectionId: 'features' },
   { label: 'How It Works', href: '/#how-it-works', sectionId: 'how-it-works' },
+  { label: 'Articles', href: '/#articles', sectionId: 'articles' },
 ]
 
 const baseAuthLinks = [
@@ -51,69 +51,6 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { isAuthenticated, user, logout } = useAuth()
-  const [activeSection, setActiveSection] = useState('home')
-
-  useEffect(() => {
-    if (location.pathname !== '/') {
-      setActiveSection('')
-      return
-    }
-
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + 120 // Header offset
-      
-      if (window.scrollY < 80) {
-        setActiveSection('home')
-        return
-      }
-
-      const sections = [
-        { id: 'about', el: document.getElementById('about') },
-        { id: 'articles', el: document.getElementById('articles') },
-        { id: 'features', el: document.getElementById('features') },
-        { id: 'how-it-works', el: document.getElementById('how-it-works') },
-      ]
-
-      let current = 'home'
-      for (const { id, el } of sections) {
-        if (el) {
-          const top = el.offsetTop
-          if (scrollPosition >= top - 20) {
-            current = id
-          }
-        }
-      }
-      setActiveSection(current)
-    }
-
-    window.addEventListener('scroll', handleScroll)
-    handleScroll()
-
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '')
-      if (hash) {
-        setActiveSection(hash)
-      } else if (window.scrollY < 80) {
-        setActiveSection('home')
-      }
-    }
-    window.addEventListener('hashchange', handleHashChange)
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('hashchange', handleHashChange)
-    }
-  }, [location.pathname, location.hash])
-
-  const isLinkActive = (link, routerIsActive) => {
-    if (!isAuthenticated && location.pathname === '/') {
-      if (link.sectionId) {
-        return activeSection === link.sectionId
-      }
-      return activeSection === 'home' && link.href === '/'
-    }
-    return routerIsActive
-  }
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'both' || !user?.isApproved) {
@@ -229,15 +166,14 @@ export default function Navbar() {
               key={link.href}
               to={link.href}
               onClick={(ev) => handleGuestSectionClick(ev, link)}
-              className={({ isActive }) => {
-                const active = isLinkActive(link, isActive)
-                return [
+              className={({ isActive }) =>
+                [
                   'whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ease-out',
-                  active
+                  isActive
                     ? 'bg-indigo-500/15 text-indigo-700 dark:bg-white/10 dark:text-indigo-200'
                     : 'text-slate-600 hover:-translate-y-px hover:bg-indigo-500/10 hover:text-indigo-700 dark:text-slate-300 dark:hover:bg-white/[0.08] dark:hover:text-indigo-200',
                 ].join(' ')
-              }}
+              }
             >
               <span className="inline-flex items-center gap-1.5">
                 {link.label}
@@ -302,15 +238,14 @@ export default function Navbar() {
               key={link.href}
               to={link.href}
               onClick={(ev) => handleGuestSectionClick(ev, link)}
-              className={({ isActive }) => {
-                const active = isLinkActive(link, isActive)
-                return cn(
+              className={({ isActive }) =>
+                cn(
                   'rounded-xl px-3 py-2.5 text-sm font-medium transition',
-                  active
+                  isActive
                     ? 'bg-indigo-500/15 text-indigo-700 dark:bg-white/10 dark:text-indigo-200'
                     : 'text-slate-700 hover:bg-indigo-500/10 hover:text-indigo-700 dark:text-slate-200 dark:hover:bg-white/[0.08]',
                 )
-              }}
+              }
             >
               <span className="inline-flex items-center gap-1.5">
                 {link.label}
