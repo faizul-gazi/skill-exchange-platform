@@ -14,7 +14,7 @@ const apiProxy = {
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   // Keep local dev root (`/`) unchanged; use repository base path only for production builds.
-  base: command === 'build' ? '/skill-exchange-platform/' : '/',
+  base: command === 'build' && !process.env.VERCEL ? '/skill-exchange-platform/' : '/',
   plugins: [react(), tailwindcss()],
   server: { proxy: apiProxy },
   preview: { proxy: apiProxy },
