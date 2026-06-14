@@ -13,15 +13,15 @@ SkillX is a modern, full-stack peer-to-peer skill-sharing platform designed to b
 
 ## 🎓 Academic Practicum Details
 * **Project Title:** SkillX - Peer-to-Peer Skill Exchange Platform
-* **Course/Program:** Practicum / Capstone Project
-* **Institution:** [Insert Your University Name]
+* **Course:** Practicum
+* **Institution:** IUBAT – International University of Business Agriculture and Technology
 * **Department:** Department of Computer Science & Engineering (CSE)
 
 ### Project Developer:
-* **Name:** [Insert Your Name]
-* **Student ID:** [Insert Student ID]
-* **Semester/Year:** [Insert Semester/Year]
-* **Supervisor:** [Insert Supervisor Name & Designation]
+* **Name:** Gazi Faizul Islam
+* **Student ID:** 22203175
+* **Semester:** 12
+* **Supervisor:** Sajia Bintea Jahangir
 
 ---
 

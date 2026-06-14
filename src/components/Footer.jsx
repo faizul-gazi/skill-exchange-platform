@@ -82,7 +82,7 @@ export default function Footer() {
           ))}
         </div>
         <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-slate-200/80 pt-8 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 sm:flex-row sm:items-center">
-          <p>© {new Date().getFullYear()} SkillX. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Gazi Faizul Islam. All rights reserved.</p>
           <Link
             to="/about"
             className="font-medium text-indigo-600 transition hover:underline dark:text-indigo-300"
